@@ -1,0 +1,159 @@
+
+<section th:fragment="practiceSession" class="section-block" id="practiceSession">
+    <div class="section-heading">
+        <div>
+            <h2>Practice Session</h2>
+            <p>Select a problem, then start your focused timer.</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- LEFT: Problem selection -->
+        <div class="col-12 col-lg-6">
+            <div class="panel h-100">
+                <h3 class="panel-title mb-3">Select a Problem</h3>
+
+                <form id="practiceProblemForm">
+                    <div class="mb-3">
+                        <label for="problemSearch" class="form-label">Find existing problem</label>
+                        <input id="problemSearch" class="form-control"
+                               type="search"
+                               placeholder="Search your library..."
+                               autocomplete="off">
+                        <div id="practiceSearchResults" class="search-results"></div>
+                    </div>
+
+                    <div class="form-divider"><span>Or enter a problem manually</span></div>
+
+                    <div class="mb-3">
+                        <label for="practiceTitle" class="form-label">Problem name *</label>
+                        <input id="practiceTitle" class="form-control"
+                               type="text" maxlength="255"
+                               placeholder="e.g. Binary Search" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="practiceUrl" class="form-label">Problem URL</label>
+                        <input id="practiceUrl" class="form-control"
+                               type="url"
+                               placeholder="https://leetcode.com/problems/...">
+                        <div class="d-flex gap-2 mt-2">
+                            <button id="fetchLeetCodeProblem"
+                            class="btn btn-outline-primary"
+                            type="button">
+                            Fetch LeetCode Problem
+                            </button>
+                        </div>
+                        <p id="leetcodeFetchMessage"
+                            class="form-message"
+                            role="status"></p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <label for="practicePlatform" class="form-label">Platform</label>
+                            <select id="practicePlatform" class="form-select">
+                                <option value="LeetCode">LeetCode</option>
+                                <option value="GeeksforGeeks">GeeksforGeeks</option>
+                                <option value="Codeforces">Codeforces</option>
+                                <option value="HackerRank">HackerRank</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+
+                        <div class="col-6">
+                            <label for="practiceDifficulty" class="form-label">Difficulty</label>
+                            <select id="practiceDifficulty" class="form-select">
+                                <option value="Easy">Easy</option>
+                                <option value="Medium">Medium</option>
+                                <option value="Hard">Hard</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary w-100 mt-4" type="submit">
+                        Use This Problem
+                    </button>
+                    <p id="practiceFormMessage" class="form-message" role="status"></p>
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT: Focused timer -->
+        <div class="col-12 col-lg-6">
+            <div class="panel timer-panel h-100">
+                <div class="d-flex justify-content-between align-items-center">
+                    <h3 class="panel-title">Focused Timer</h3>
+                    <span id="timerStatus" class="timer-status">Not started</span>
+                </div>
+
+                <div class="selected-problem-card mt-3">
+                    <span class="eyebrow">CURRENT PROBLEM</span>
+                    <h4 id="timerProblemTitle">No problem selected</h4>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span id="timerProblemPlatform" class="metadata-chip">Platform —</span>
+                        <span id="timerProblemDifficulty" class="metadata-chip">Difficulty —</span>
+                    </div>
+                    <a id="timerProblemLink" href="#" target="_blank"
+                       rel="noopener noreferrer" hidden>Open problem ↗</a>
+                </div>
+
+                <div class="timer-display-wrap">
+                    <span class="eyebrow">ELAPSED TIME</span>
+                    <div id="timerDisplay" class="timer-display">00:00:00</div>
+                    <p id="timerHint" class="text-secondary small">
+                        Select a problem before starting.
+                    </p>
+                </div>
+
+                <div class="timer-controls">
+                    <button id="timerStart" class="btn btn-primary" type="button">
+                        ▶ Start
+                    </button>
+                    <button id="timerPause" class="btn btn-outline-light" type="button"
+                            disabled>Pause</button>
+                    <button id="timerFinish" class="btn btn-success" type="button"
+                            disabled>Finish</button>
+                    <button id="timerClear" class="btn btn-outline-danger" type="button">
+                        Clear
+                    </button>
+                </div>
+
+                <p class="timer-footnote">
+                    Finish saves an attempt. Clear discards the current timer.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Finish dialog -->
+    <dialog id="finishAttemptDialog" class="finish-dialog">
+        <form id="finishAttemptForm">
+            <h3>Finish Practice</h3>
+            <p class="text-secondary">Record how the attempt went.</p>
+
+            <div class="mb-3">
+                <label for="attemptOutcome" class="form-label">Outcome</label>
+                <select id="attemptOutcome" class="form-select" required>
+                    <option value="SOLVED">Solved</option>
+                    <option value="PARTIALLY_SOLVED">Partially solved</option>
+                    <option value="NOT_SOLVED">Not solved</option>
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label for="attemptNotes" class="form-label">Notes (optional)</label>
+                <textarea id="attemptNotes" class="form-control" rows="3"
+                          maxlength="3000"
+                          placeholder="What did you learn? Where did you get stuck?"></textarea>
+            </div>
+
+            <div class="dialog-actions">
+                <button id="cancelFinish" class="btn btn-outline-light"
+                        type="button">Cancel</button>
+                <button class="btn btn-success" type="submit">Save Attempt</button>
+            </div>
+            <p id="finishAttemptMessage" class="form-message" role="status"></p>
+        </form>
+    </dialog>
+</section>

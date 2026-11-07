@@ -1,0 +1,17 @@
+spring.application.name=recallcode
+
+# Database configuration — fill in your own values
+spring.datasource.url=jdbc:postgresql://localhost:5432/recallcode_db
+spring.datasource.username=postgres
+spring.datasource.password=YOUR_DB_PASSWORD_HERE
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+# Load secrets from outside the repository (see secrets/recallcode-secrets.properties.example)
+spring.config.import=file:/path/to/secrets/recallcode-secrets.properties
+
+# AI / OpenRouter configuration
+spring.ai.openai.base-url=https://openrouter.ai/api/v1
+spring.ai.openai.api-key=${OPENROUTER_API_KEY}
+spring.ai.openai.chat.model=openrouter/free

@@ -1,0 +1,62 @@
+
+<section th:fragment="progressRevisions" class="section-block">
+    <div class="section-heading">
+        <div>
+            <h1>Your workspace</h1>
+            <p>Track your progress and stay on top of revisions.</p>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <!-- LEFT: Progress dashboard -->
+        <div class="col-12 col-lg-7">
+            <div class="panel h-100">
+                <h2 class="panel-title">Progress Dashboard</h2>
+
+                <div class="row g-3 mt-1">
+                    <div class="col-6 col-xl-3">
+                        <div class="stat-card">
+                            <span>Problems tracked</span>
+                            <strong id="totalProblems">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-xl-3">
+                        <div class="stat-card">
+                            <span>Solved attempts</span>
+                            <strong id="solvedAttempts">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-xl-3">
+                        <div class="stat-card">
+                            <span>Total attempts</span>
+                            <strong id="totalAttempts">—</strong>
+                        </div>
+                    </div>
+
+                    <div class="col-6 col-xl-3">
+                        <div class="stat-card">
+                            <span>Average time</span>
+                            <strong id="averageTime">—</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Revision queue -->
+        <div class="col-12 col-lg-5">
+            <div class="panel h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="panel-title mb-0">Revision Queue</h2>
+                    <span class="count-badge" id="revisionCount">0 due</span>
+                </div>
+
+                <div id="revisionList" class="revision-list">
+                    <p class="empty-state">Loading revisions...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,461 @@
+
+(() => {
+    let selectedProblem = null;
+    let timerState = "idle";
+    let elapsedBeforeStart = 0;
+    let startedAt = null;
+    let ticker = null;
+    let savingAttempt = false;
+
+    const $ = id => document.getElementById(id);
+
+    const form = $("practiceProblemForm");
+    const searchInput = $("problemSearch");
+    const searchResults = $("practiceSearchResults");
+    const message = $("practiceFormMessage");
+    const finishDialog = $("finishAttemptDialog");
+    const finishForm = $("finishAttemptForm");
+    const leetcodeFetchMessage = $("leetcodeFetchMessage");
+    const fetchLeetCodeButton = $("fetchLeetCodeProblem");
+
+    function elapsedSeconds() {
+        if (timerState === "running" && startedAt !== null) {
+            return elapsedBeforeStart +
+                Math.floor((Date.now() - startedAt) / 1000);
+        }
+        return elapsedBeforeStart;
+    }
+
+    function formatTime(totalSeconds) {
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        return [hours, minutes, seconds]
+            .map(value => String(value).padStart(2, "0"))
+            .join(":");
+    }
+
+    function renderTimer() {
+        $("timerDisplay").textContent = formatTime(elapsedSeconds());
+
+        $("timerStart").disabled =
+            !selectedProblem || timerState === "running" ||
+            timerState === "paused";
+
+        $("timerPause").disabled =
+            timerState !== "running" && timerState !== "paused";
+
+        $("timerPause").textContent =
+            timerState === "paused" ? "Resume" : "Pause";
+
+        $("timerFinish").disabled =
+            !selectedProblem || timerState === "idle";
+
+        $("timerClear").disabled =
+            timerState === "idle" && elapsedBeforeStart === 0;
+
+        const status = $("timerStatus");
+        status.classList.toggle("is-running", timerState === "running");
+
+        const labels = {
+            idle: "Not started",
+            running: "Running",
+            paused: "Paused"
+        };
+
+        status.textContent = labels[timerState];
+    }
+
+    function showProblem(problem) {
+        selectedProblem = problem;
+
+        $("timerProblemTitle").textContent = problem.title || "Untitled problem";
+        $("timerProblemPlatform").textContent =
+            problem.platform || "Other";
+        $("timerProblemDifficulty").textContent =
+            problem.difficulty || "Unspecified";
+
+        const link = $("timerProblemLink");
+        const url = problem.problemUrl || "";
+
+        // Only allow HTTP and HTTPS problem links.
+        try {
+            const parsed = new URL(url);
+            if (["http:", "https:"].includes(parsed.protocol)) {
+                link.href = parsed.href;
+                link.hidden = false;
+            } else {
+                link.removeAttribute("href");
+                link.hidden = true;
+            }
+        } catch {
+            link.removeAttribute("href");
+            link.hidden = true;
+        }
+
+        $("practiceTitle").value = problem.title || "";
+        $("practiceUrl").value = problem.problemUrl || "";
+        $("practicePlatform").value = problem.platform || "Other";
+        $("practiceDifficulty").value = problem.difficulty || "Easy";
+
+        message.textContent = "Problem selected.";
+        $("timerHint").textContent = "Ready when you are.";
+
+        renderTimer();
+    }
+
+    // Select a problem from the revision queue or another dashboard section.
+    window.addEventListener("recallcode:select-problem", event => {
+        const problem = event.detail?.problem;
+        if (!problem?.id) {
+            message.textContent = "This problem has no saved ID.";
+            return;
+        }
+
+        if (timerState !== "idle" || elapsedBeforeStart > 0) {
+            const discard = window.confirm(
+                "Replace the selected problem and reset the current timer?"
+            );
+            if (!discard) return;
+            resetTimer(false);
+        }
+
+        showProblem(problem);
+        $("practiceSession").scrollIntoView({
+            behavior: "smooth",
+            block: "center"
+        });
+    });
+
+    // Search existing problems.
+    let searchTimeout;
+
+    searchInput.addEventListener("input", () => {
+        clearTimeout(searchTimeout);
+
+        const query = searchInput.value.trim();
+        if (!query) {
+            searchResults.replaceChildren();
+            return;
+        }
+
+        searchTimeout = setTimeout(async () => {
+            try {
+                const response = await fetch("/api/problems");
+                if (!response.ok) throw new Error("Search failed");
+
+                const problems = await response.json();
+                const matches = problems
+                    .filter(problem =>
+                        (problem.title || "")
+                            .toLowerCase()
+                            .includes(query.toLowerCase())
+                    )
+                    .slice(0, 6);
+
+                searchResults.replaceChildren();
+
+                if (!matches.length) {
+                    const empty = document.createElement("p");
+                    empty.className = "empty-state";
+                    empty.textContent = "No matching saved problems.";
+                    searchResults.appendChild(empty);
+                    return;
+                }
+
+                matches.forEach(problem => {
+                    const button = document.createElement("button");
+                    button.type = "button";
+                    button.className = "search-result-button";
+
+                    const title = document.createElement("span");
+                    title.textContent = problem.title;
+
+                    const details = document.createElement("small");
+                    details.textContent =
+                        `${problem.platform || "Other"} · ${problem.difficulty || "Unspecified"}`;
+
+                    button.append(title, details);
+                    button.addEventListener("click", () => {
+                        if (timerState !== "idle" || elapsedBeforeStart > 0) {
+                            if (!window.confirm(
+                                "Switch problem and reset the current timer?"
+                            )) return;
+                            resetTimer(false);
+                        }
+
+                        showProblem(problem);
+                        searchResults.replaceChildren();
+                        searchInput.value = problem.title;
+                    });
+
+                    searchResults.appendChild(button);
+                });
+            } catch (error) {
+                console.error(error);
+                message.textContent = "Unable to search saved problems.";
+            }
+        }, 250);
+    });
+
+    // Fetch and save real LeetCode metadata using the existing backend.
+fetchLeetCodeButton.addEventListener("click", async () => {
+    const url = $("practiceUrl").value.trim();
+
+    if (!url) {
+        leetcodeFetchMessage.textContent = "Enter a LeetCode problem URL.";
+        return;
+    }
+
+    if (timerState !== "idle" || elapsedBeforeStart > 0) {
+        leetcodeFetchMessage.textContent =
+            "Finish or clear the current timer before switching problems.";
+        return;
+    }
+
+    fetchLeetCodeButton.disabled = true;
+    leetcodeFetchMessage.textContent = "Fetching real LeetCode metadata...";
+
+    try {
+        const response = await fetch("/api/problems/metadata/leetcode", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url })
+        });
+
+        if (!response.ok) {
+            throw new Error(
+                (await response.text()) || "Unable to fetch LeetCode metadata."
+            );
+        }
+
+        const data = await response.json();
+
+        if (!data.id || !data.title) {
+            throw new Error("The backend response is missing the problem ID or title.");
+        }
+
+        // Adapt the metadata response to the format timer.js already uses.
+        const problem = {
+            id: data.id,
+            title: data.title,
+            platform: data.platform || "LeetCode",
+            difficulty: data.difficulty || "Easy",
+            problemUrl: data.url || url,
+            tags: data.tags || []
+        };
+
+        showProblem(problem);
+        leetcodeFetchMessage.textContent =
+            "LeetCode problem fetched and saved successfully.";
+
+    } catch (error) {
+        console.error("LeetCode metadata fetch failed:", error);
+        leetcodeFetchMessage.textContent =
+            error.message || "Could not fetch the LeetCode problem.";
+    } finally {
+        fetchLeetCodeButton.disabled = false;
+    }
+});
+
+    // Save a manually entered problem, or reuse the currently selected one.
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const title = $("practiceTitle").value.trim();
+        const problemUrl = $("practiceUrl").value.trim();
+        const platform = $("practicePlatform").value;
+        const difficulty = $("practiceDifficulty").value;
+
+        if (!title) {
+            message.textContent = "Enter a problem name first.";
+            return;
+        }
+
+        if (timerState !== "idle" || elapsedBeforeStart > 0) {
+            message.textContent =
+                "Finish or clear the current timer before switching problems.";
+            return;
+        }
+
+        if (
+            selectedProblem?.id &&
+            selectedProblem.title === title &&
+            (selectedProblem.problemUrl || "") === problemUrl &&
+            selectedProblem.platform === platform &&
+            selectedProblem.difficulty === difficulty
+        ) {
+            message.textContent = "Using the selected saved problem.";
+            return;
+        }
+
+        try {
+            message.textContent = "Saving problem...";
+
+            const response = await fetch("/api/problems", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title,
+                    problemUrl: problemUrl || null,
+                    platform,
+                    difficulty
+                })
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || "Could not save problem");
+            }
+
+            const problem = await response.json();
+            showProblem(problem);
+            message.textContent = "Problem saved and selected.";
+        } catch (error) {
+            console.error(error);
+            message.textContent =
+                "Could not save. Check the URL isn't already registered and review the backend error.";
+        }
+    });
+
+    $("timerStart").addEventListener("click", () => {
+        if (!selectedProblem?.id || timerState === "running") return;
+
+        startedAt = Date.now();
+        timerState = "running";
+
+        clearInterval(ticker);
+        ticker = setInterval(renderTimer, 250);
+
+        $("timerHint").textContent = "Stay focused. You've got this.";
+        renderTimer();
+    });
+
+    $("timerPause").addEventListener("click", () => {
+        if (timerState === "running") {
+            elapsedBeforeStart = elapsedSeconds();
+            startedAt = null;
+            timerState = "paused";
+        } else if (timerState === "paused") {
+            startedAt = Date.now();
+            timerState = "running";
+        } else {
+            return;
+        }
+
+        renderTimer();
+    });
+
+    $("timerFinish").addEventListener("click", () => {
+        if (!selectedProblem?.id || timerState === "idle") return;
+
+        elapsedBeforeStart = elapsedSeconds();
+        startedAt = null;
+        timerState = "paused";
+
+        $("finishAttemptMessage").textContent = "";
+        finishDialog.showModal();
+        renderTimer();
+    });
+
+    $("cancelFinish").addEventListener("click", () => {
+        finishDialog.close();
+        // The timer stays paused so the user can resume it.
+    });
+
+    finishForm.addEventListener("submit", async event => {
+        event.preventDefault();
+        if (savingAttempt || !selectedProblem?.id) return;
+
+        savingAttempt = true;
+
+        const saveButton = finishForm.querySelector(
+            'button[type="submit"]'
+        );
+        saveButton.disabled = true;
+
+        try {
+            // The existing backend stores time in whole minutes.
+            const minutes = Math.ceil(elapsedSeconds() / 60);
+
+            const response = await fetch(
+                `/api/problems/${selectedProblem.id}/attempts`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        timeTakenMinutes: minutes,
+                        outcome: $("attemptOutcome").value,
+                        notes: $("attemptNotes").value.trim()
+                    })
+                }
+            );
+
+            if (!response.ok) {
+                throw new Error(await response.text() ||
+                    "Could not save attempt");
+            }
+
+            finishDialog.close();
+            finishForm.reset();
+            resetTimer(true);
+
+            $("timerHint").textContent = "Attempt saved successfully.";
+
+            // Refresh dashboard data if Part 1 has defined this function.
+            if (typeof window.loadDashboardSummary === "function") {
+                window.loadDashboardSummary();
+            }
+
+            window.dispatchEvent(
+                new CustomEvent("recallcode:attempt-saved", {
+                    detail: { problem: selectedProblem }
+                })
+            );
+        } catch (error) {
+            console.error(error);
+            $("finishAttemptMessage").textContent =
+                "Attempt could not be saved. Your timer is paused; please retry.";
+        } finally {
+            savingAttempt = false;
+            saveButton.disabled = false;
+        }
+    });
+
+    $("timerClear").addEventListener("click", () => {
+        if (timerState === "idle" && elapsedBeforeStart === 0) return;
+
+        if (!window.confirm(
+            "Clear the timer? This discards the unsaved session without saving an attempt."
+        )) return;
+
+        resetTimer(true);
+        $("timerHint").textContent = "Timer cleared. You can start again.";
+    });
+
+    function resetTimer(clearProblem) {
+        clearInterval(ticker);
+        ticker = null;
+        startedAt = null;
+        elapsedBeforeStart = 0;
+        timerState = "idle";
+
+        if (clearProblem) {
+            selectedProblem = null;
+            $("timerProblemTitle").textContent = "No problem selected";
+            $("timerProblemPlatform").textContent = "Platform —";
+            $("timerProblemDifficulty").textContent = "Difficulty —";
+            $("timerProblemLink").hidden = true;
+            $("practiceTitle").value = "";
+            $("practiceUrl").value = "";
+            searchInput.value = "";
+            searchResults.replaceChildren();
+            message.textContent = "";
+        }
+
+        renderTimer();
+    }
+
+    renderTimer();
+})();

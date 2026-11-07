@@ -1,0 +1,97 @@
+```html
+<section th:fragment="problemLibrary" id="problemLibrary" class="panel library-panel">
+    <div class="section-heading">
+        <div>
+            <span class="eyebrow">YOUR COLLECTION</span>
+            <h2>Problem Library</h2>
+            <p class="section-subtitle">Find problems and review your previous attempts.</p>
+        </div>
+        <span id="libraryTotal" class="count-badge">0 problems</span>
+    </div>
+
+    <div class="library-layout">
+        <!-- LEFT: SEARCH AND PROBLEM LIST -->
+        <div class="library-list-column">
+            <div class="library-filters">
+                <input
+                    type="search"
+                    id="librarySearch"
+                    class="form-control"
+                    placeholder="Search problems..."
+                    aria-label="Search problems">
+
+                <select id="libraryDifficulty" class="form-select"
+                        aria-label="Filter by difficulty">
+                    <option value="">All difficulties</option>
+                    <option value="EASY">Easy</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HARD">Hard</option>
+                </select>
+            </div>
+
+            <div id="libraryProblemList" class="library-problem-list">
+                <p class="empty-state">Loading problems...</p>
+            </div>
+
+            <div class="pagination-bar">
+                <span id="libraryPageInfo" class="muted-text">Page 1</span>
+                <div class="pagination-controls">
+                    <button id="libraryPrev" class="btn btn-outline-secondary btn-sm"
+                            type="button">Previous</button>
+                    <button id="libraryNext" class="btn btn-outline-secondary btn-sm"
+                            type="button">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: SELECTED PROBLEM AND HISTORY -->
+        <aside class="library-detail-column" id="libraryDetail">
+            <div id="libraryEmptyDetail" class="empty-detail">
+                <div class="empty-detail-icon">↗</div>
+                <h3>Select a problem</h3>
+                <p>Choose a problem from the list to see its details, practice it, and review your attempt history.</p>
+            </div>
+
+            <div id="librarySelectedDetail" hidden>
+                <span class="eyebrow">SELECTED PROBLEM</span>
+                <h3 id="detailProblemTitle" class="detail-title"></h3>
+
+                <div class="detail-metadata">
+                    <span id="detailPlatform" class="metadata-chip"></span>
+                    <span id="detailDifficulty" class="metadata-chip"></span>
+                </div>
+
+                <a id="detailProblemLink" class="detail-link"
+                   target="_blank" rel="noopener noreferrer" hidden>
+                    Open problem ↗
+                </a>
+
+                <div class="detail-stats">
+                    <div>
+                        <span class="eyebrow">ATTEMPTS</span>
+                        <strong id="detailAttemptCount">0</strong>
+                    </div>
+                    <div>
+                        <span class="eyebrow">BEST SOLVED TIME</span>
+                        <strong id="detailBestTime">—</strong>
+                    </div>
+                </div>
+
+                <button id="practiceSelectedProblem" type="button"
+                        class="btn btn-primary w-100">
+                    Practice this problem
+                </button>
+
+                <div class="history-heading">
+                    <h4>Attempt history</h4>
+                    <span class="muted-text">Newest first</span>
+                </div>
+
+                <div id="libraryAttemptHistory" class="attempt-history">
+                    <p class="empty-state">Loading attempts...</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+</section>
+```
