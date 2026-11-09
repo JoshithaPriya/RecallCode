@@ -15,3 +15,6 @@ spring.config.import=file:/path/to/secrets/recallcode-secrets.properties
 spring.ai.openai.base-url=https://openrouter.ai/api/v1
 spring.ai.openai.api-key=${OPENROUTER_API_KEY}
 spring.ai.openai.chat.model=openrouter/free
+
+
+server.port=${PORT:8080}
