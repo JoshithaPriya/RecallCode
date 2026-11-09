@@ -24,7 +24,6 @@ public class Problem {
 
     private String platform;
 
-    @Column(unique = true)
     private String problemUrl;
 
     private String difficulty;
@@ -37,6 +36,9 @@ public class Problem {
     private Integer solvedCount;
     private Double points;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private User user;
     // Text fields remain null unless a permitted source provides them.
     @Column(columnDefinition = "TEXT")
     private String description;
@@ -194,5 +196,13 @@ public String getSimilarQuestionsJson() {
 
 public void setSimilarQuestionsJson(String similarQuestionsJson) {
     this.similarQuestionsJson = similarQuestionsJson;
+}
+
+public User getUser() {
+    return user;
+}
+
+public void setUser(User user) {
+    this.user = user;
 }
 }

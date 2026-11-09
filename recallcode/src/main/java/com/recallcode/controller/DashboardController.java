@@ -53,7 +53,10 @@ public class DashboardController {
                 .orElse(0.0);
 
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("totalProblems", problemRepository.count());
+
+        summary.put("totalProblems",
+        problemRepository.findVisibleToUser(user.getId()).size());
+    
         summary.put("totalAttempts", attempts.size());
         summary.put("solvedAttempts", solvedAttempts);
         summary.put("averageTimeMinutes",

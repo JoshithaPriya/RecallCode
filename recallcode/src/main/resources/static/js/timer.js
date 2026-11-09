@@ -275,7 +275,7 @@ fetchLeetCodeButton.addEventListener("click", async () => {
     // Save a manually entered problem, or reuse the currently selected one.
     form.addEventListener("submit", async event => {
         event.preventDefault();
-
+        console.log("Practice problem form submitted");
         const title = $("practiceTitle").value.trim();
         const problemUrl = $("practiceUrl").value.trim();
         const platform = $("practicePlatform").value;
@@ -305,7 +305,7 @@ fetchLeetCodeButton.addEventListener("click", async () => {
 
         try {
             message.textContent = "Saving problem...";
-
+            console.log("Submitting new problem:", { title, problemUrl, platform, difficulty });
             const response = await fetch("/api/problems", {
                 method: "POST",
                 headers: {
@@ -326,7 +326,10 @@ fetchLeetCodeButton.addEventListener("click", async () => {
             }
 
             const problem = await response.json();
+
+            await loadProblems();
             showProblem(problem);
+
             message.textContent = "Problem saved and selected.";
         } catch (error) {
             console.error(error);
