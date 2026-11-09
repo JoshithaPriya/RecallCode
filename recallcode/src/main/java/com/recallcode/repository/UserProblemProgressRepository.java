@@ -27,5 +27,10 @@ public interface UserProblemProgressRepository
             LocalDateTime dateTime
     );
 
+    List<UserProblemProgress> findByUserIdAndNextRevisionAtLessThanEqual(
+        Long userId,
+        LocalDateTime dateTime
+);
+
     boolean existsByUserIdAndProblemId(Long userId, Long problemId);
 }

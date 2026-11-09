@@ -1,20 +1,18 @@
 
+// Processes AI analysis jobs and updates each user's independent revision progress.
+
 package com.recallcode.service;
 
 import com.recallcode.model.*;
 import com.recallcode.repository.*;
+
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-import org.springframework.transaction.annotation.Transactional;
-
-/*
- * Processes pending analysis jobs using real attempts and AI assessments.
- * Reuses saved assessments on retries to avoid unnecessary API calls.
- */
 @Component
 public class AgentAnalysisWorker {
 
@@ -30,6 +28,7 @@ public class AgentAnalysisWorker {
             AgentAssessmentRecordRepository assessmentRepository,
             AgentAssessmentService assessmentService,
             RevisionService revisionService) {
+
         this.jobRepository = jobRepository;
         this.attemptRepository = attemptRepository;
         this.assessmentRepository = assessmentRepository;
@@ -39,6 +38,7 @@ public class AgentAnalysisWorker {
 
     @Scheduled(fixedDelay = 5000)
     public void processPendingJobs() {
+
         List<AgentAnalysisJob> jobs =
                 jobRepository.findTop20ByStatusOrderByCreatedAtAsc("PENDING");
 
@@ -46,15 +46,26 @@ public class AgentAnalysisWorker {
             processJob(job);
         }
     }
-   
+
     private void processJob(AgentAnalysisJob job) {
+
         job.setStatus("PROCESSING");
+        job.setProcessingStartedAt(LocalDateTime.now());
         jobRepository.save(job);
 
         try {
-            Attempt attempt = attemptRepository.findByIdWithProblemAndTags(job.getAttemptId())
+            Attempt attempt = attemptRepository
+                    .findByIdWithProblemTagsAndUser(job.getAttemptId())
                     .orElseThrow(() ->
                             new IllegalStateException("Attempt not found"));
+
+            if (attempt.getUser() == null) {
+                throw new IllegalStateException(
+                        "Attempt has no associated user");
+            }
+
+            Long userId = attempt.getUser().getId();
+            Long problemId = attempt.getProblem().getId();
 
             var savedAssessment =
                     assessmentRepository.findByAttemptId(job.getAttemptId());
@@ -62,7 +73,6 @@ public class AgentAnalysisWorker {
             String recallQuality;
 
             if (savedAssessment.isPresent()) {
-                // Reuse the saved AI result; do not call the AI again.
                 recallQuality =
                         savedAssessment.get().getRecallQuality();
             } else {
@@ -77,20 +87,24 @@ public class AgentAnalysisWorker {
                 recallQuality = assessment.getRecallQuality();
             }
 
-            // Apply the saved or newly generated AI assessment.
             revisionService.completeRevision(
-                    attempt.getProblem().getId(), recallQuality);
+                    userId, problemId, recallQuality);
 
             job.setStatus("COMPLETED");
             job.setCompletedAt(LocalDateTime.now());
+            job.setProcessingStartedAt(null);
             job.setLastError(null);
 
         } catch (Exception exception) {
+
             job.incrementRetryCount();
+
             job.setLastError(
                     exception.getMessage() == null
                             ? "Unknown analysis error"
                             : exception.getMessage());
+
+            job.setProcessingStartedAt(null);
 
             job.setStatus(job.getRetryCount() >= 3
                     ? "FAILED"
@@ -102,17 +116,18 @@ public class AgentAnalysisWorker {
 
     @Scheduled(fixedDelay = 60000)
     public void recoverStuckJobs() {
-    LocalDateTime cutoff = LocalDateTime.now().minusMinutes(15);
 
-    List<AgentAnalysisJob> stuckJobs =
-            jobRepository.findByStatusAndProcessingStartedAtBefore(
-                    "PROCESSING", cutoff);
+        LocalDateTime cutoff = LocalDateTime.now().minusMinutes(15);
 
-    for (AgentAnalysisJob job : stuckJobs) {
-        job.setStatus("PENDING");
-        job.setProcessingStartedAt(null);
-        job.setLastError("Recovered after processing timed out.");
-        jobRepository.save(job);
+        List<AgentAnalysisJob> stuckJobs =
+                jobRepository.findByStatusAndProcessingStartedAtBefore(
+                        "PROCESSING", cutoff);
+
+        for (AgentAnalysisJob job : stuckJobs) {
+            job.setStatus("PENDING");
+            job.setProcessingStartedAt(null);
+            job.setLastError("Recovered after processing timed out.");
+            jobRepository.save(job);
+        }
     }
-}
 }

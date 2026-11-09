@@ -33,24 +33,44 @@ public class AgentAssessmentService {
         this.chatClient = builder.build();
         this.attemptRepository = attemptRepository;
     }
-    @Transactional(readOnly = true)
-    public AgentAssessment analyseAttempt(Attempt attempt) {
-        Problem problem = attempt.getProblem();
+@Transactional(readOnly = true)
+public AgentAssessment analyseAttempt(Attempt attempt) {
+    Problem problem = attempt.getProblem();
 
-        List<Attempt> allAttempts =
-                attemptRepository.findByProblemId(problem.getId());
-
-        String prompt = buildAssessmentPrompt(attempt, allAttempts);
-
-        // This is the only AI call in this service.
-        AgentAssessment assessment = chatClient.prompt()
-                .user(prompt)
-                .call()
-                .entity(AgentAssessment.class);
-
-        validateAssessment(assessment);
-        return assessment;
+    if (attempt.getUser() == null) {
+        throw new IllegalStateException(
+                "Cannot analyse an attempt without an associated user."
+        );
     }
+
+    Long userId = attempt.getUser().getId();
+
+    List<Attempt> allAttempts =
+            attemptRepository.findByUserIdAndProblemId(
+                    userId,
+                    problem.getId()
+            );
+
+    // Only consider attempts made before the current attempt.
+    List<Attempt> previousAttempts = allAttempts.stream()
+            .filter(previous -> !Objects.equals(
+                    previous.getId(), attempt.getId()))
+            .filter(previous -> previous.getAttemptedAt() != null)
+            .filter(previous -> attempt.getAttemptedAt() != null
+                    && previous.getAttemptedAt()
+                            .isBefore(attempt.getAttemptedAt()))
+            .toList();
+
+    String prompt = buildAssessmentPrompt(attempt, previousAttempts);
+
+    AgentAssessment assessment = chatClient.prompt()
+            .user(prompt)
+            .call()
+            .entity(AgentAssessment.class);
+
+    validateAssessment(assessment);
+    return assessment;
+}
 
     /*
      * Creates the compact prompt using only selected problem metadata

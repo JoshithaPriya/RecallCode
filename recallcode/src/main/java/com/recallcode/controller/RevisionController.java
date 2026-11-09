@@ -1,36 +1,68 @@
-
 package com.recallcode.controller;
 
-import com.recallcode.model.Problem;
-import com.recallcode.repository.ProblemRepository;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.recallcode.model.User;
+import com.recallcode.model.UserProblemProgress;
+import com.recallcode.service.UserService;
+import com.recallcode.repository.UserProblemProgressRepository;
 
-import java.time.LocalDate;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
 import java.util.List;
 
-//This filters problems by their scheduled revision date without incorrectly excluding previously solved problems.
-
+// Returns only the authenticated user's problems that are due for revision.
 @RestController
 @RequestMapping("/api/revisions")
 public class RevisionController {
 
-    private final ProblemRepository problemRepository;
+    private final UserProblemProgressRepository progressRepository;
+    private final UserService userService;
 
-    public RevisionController(ProblemRepository problemRepository) {
-        this.problemRepository = problemRepository;
+    public RevisionController(
+            UserProblemProgressRepository progressRepository,
+            UserService userService) {
+        this.progressRepository = progressRepository;
+        this.userService = userService;
     }
 
     @GetMapping
-    public List<Problem> getDueRevisions() {
-        LocalDate today = LocalDate.now();
+    public List<RevisionResponse> getDueRevisions(
+            Authentication authentication) {
 
-        return problemRepository.findAll()
-                .stream()
-                .filter(problem ->
-                        problem.getNextRevisionDate() != null
-                        && !problem.getNextRevisionDate().isAfter(today))
+        User user = userService.getUserByUsername(
+                authentication.getName()
+        );
+
+        List<UserProblemProgress> dueProgress =
+                progressRepository.findByUserIdAndNextRevisionAtLessThanEqual(
+                        user.getId(),
+                        LocalDateTime.now()
+                );
+
+        return dueProgress.stream()
+                .map(progress -> new RevisionResponse(
+                        progress.getProblem().getId(),
+                        progress.getProblem().getTitle(),
+                        progress.getProblem().getPlatform(),
+                        progress.getProblem().getDifficulty(),
+                        progress.getProblem().getProblemUrl(),
+                        progress.getRevisionStreak(),
+                        progress.getRevisionIntervalDays(),
+                        progress.getNextRevisionAt()
+                ))
                 .toList();
     }
+
+    // Safe response containing revision details without exposing user data.
+    public record RevisionResponse(
+            Long problemId,
+            String title,
+            String platform,
+            String difficulty,
+            String problemUrl,
+            Integer revisionStreak,
+            Integer revisionIntervalDays,
+            LocalDateTime nextRevisionAt
+    ) {}
 }

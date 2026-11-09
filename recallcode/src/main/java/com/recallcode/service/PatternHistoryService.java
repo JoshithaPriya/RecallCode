@@ -26,7 +26,7 @@ public class PatternHistoryService {
     }
 
     @Transactional(readOnly = true)
-    public Map<String, Map<String, Object>> getPatternHistory() {
+        public Map<String, Map<String, Object>> getPatternHistory(Long userId){
         List<Problem> problems = problemRepository.findAll();
 
         Map<String, Map<String, Object>> history = new TreeMap<>();
@@ -38,9 +38,16 @@ public class PatternHistoryService {
                 continue;
             }
 
-            List<Attempt> attempts =
-                    attemptRepository.findByProblemId(problem.getId());
+           
 
+            List<Attempt> attempts =
+        attemptRepository.findByUserIdAndProblemId(
+                userId, problem.getId()
+        );
+
+        if (attempts.isEmpty()) {
+        continue;
+        }
             for (String tag : tags) {
                 if (tag == null || tag.isBlank()) {
                     continue;

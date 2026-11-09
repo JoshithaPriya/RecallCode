@@ -653,6 +653,51 @@ body {
     overflow-wrap: anywhere;
 }
 
+
+
+/* Adaptive recommendation details */
+.revision-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.revision-details > * {
+    display: block;
+    margin-top: 6px;
+}
+
+.revision-details strong {
+    font-size: 14px;
+    color: var(--text);
+}
+
+.revision-details small {
+    color: var(--muted);
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.recommendation-reason {
+    color: #c8c0ff;
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 8px 0;
+}
+
+.revision-item {
+    align-items: flex-start;
+}
+
+@media (max-width: 520px) {
+    .revision-item {
+        flex-direction: column;
+    }
+
+    .revision-action {
+        align-self: flex-start;
+    }
+}
+
 @media (max-width: 900px) {
     .library-layout {
         grid-template-columns: minmax(0, 1fr);

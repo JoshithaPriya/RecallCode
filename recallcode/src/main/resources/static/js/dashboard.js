@@ -31,66 +31,108 @@ async function loadDashboardSummary() {
     }
 }
 
+
 async function loadRevisionQueue() {
     const list = document.getElementById("revisionList");
     const count = document.getElementById("revisionCount");
 
     try {
-        const response = await fetch("/api/revisions");
+        const response = await fetch("/api/recommendations");
 
         if (!response.ok) {
-            throw new Error("Could not load revision queue");
+            throw new Error("Could not load recommendations");
         }
 
-        const problems = await response.json();
-        count.textContent = `${problems.length} due`;
+        const data = await response.json();
+        const recommendations = data.recommendations ?? [];
 
-        if (problems.length === 0) {
+        count.textContent = `${recommendations.length} recommendations`;
+        list.replaceChildren();
+
+        if (recommendations.length === 0) {
             list.innerHTML =
-                '<p class="empty-state">You have no revisions due. Nice work!</p>';
+                '<p class="empty-state">No recommendations right now. Keep practising!</p>';
             return;
         }
 
-        list.replaceChildren();
-
-        problems.slice(0, 4).forEach(problem => {
+        recommendations.slice(0, 4).forEach(recommendation => {
             const item = document.createElement("div");
             item.className = "revision-item";
 
             const details = document.createElement("div");
+            details.className = "revision-details";
+
             const name = document.createElement("strong");
+            name.textContent = recommendation.problemTitle;
+
+            const type = document.createElement("small");
+            type.textContent = recommendation.recommendationType.replaceAll("_", " ");
+
+            const concept = document.createElement("small");
+            concept.textContent =
+                `Concept: ${recommendation.relevantConcept || "Not available"}`;
+
             const metadata = document.createElement("small");
-            const button = document.createElement("button");
-
-            name.textContent = problem.title;
             metadata.textContent =
-                `${problem.platform || "Other"} · ${problem.difficulty || "Unspecified"}`;
+                `${recommendation.difficulty || "Unspecified"} · ` +
+                `Mastery: ${(recommendation.masteryProbability * 100).toFixed(1)}%`;
 
+            const reason = document.createElement("p");
+            reason.className = "recommendation-reason";
+            reason.textContent = recommendation.reason || "";
+
+            const priority = document.createElement("small");
+            priority.textContent =
+                `Priority: ${(recommendation.priorityScore * 100).toFixed(1)}%`;
+
+            const revisionDate = document.createElement("small");
+            revisionDate.textContent = recommendation.nextRevisionAt
+                ? `Next revision: ${new Date(recommendation.nextRevisionAt).toLocaleDateString()}`
+                : "New problem · No revision scheduled yet";
+
+            const button = document.createElement("button");
             button.className = "revision-action";
             button.type = "button";
             button.textContent = "Practice";
+
             button.addEventListener("click", () => {
-                // The practice-session section will handle this in Part 2.
-                window.dispatchEvent(new CustomEvent("recallcode:select-problem", {
-                    detail: { problem }
-                }));
+                window.dispatchEvent(
+                    new CustomEvent("recallcode:select-problem", {
+                        detail: {
+                            problem: {
+                                id: recommendation.problemId,
+                                problemId: recommendation.problemId,
+                                title: recommendation.problemTitle,
+                                difficulty: recommendation.difficulty
+                            }
+                        }
+                    })
+                );
             });
 
-            details.append(name, metadata);
+            details.append(
+                name, type, concept, metadata,
+                reason, priority, revisionDate
+            );
+
             item.append(details, button);
             list.appendChild(item);
         });
 
-        if (problems.length > 4) {
+        if (recommendations.length > 4) {
             const more = document.createElement("p");
             more.className = "empty-state";
-            more.textContent = `+ ${problems.length - 4} more due for revision`;
+            more.textContent =
+                `+ ${recommendations.length - 4} more recommendations`;
             list.appendChild(more);
         }
+
     } catch (error) {
-        console.error("Revision queue error:", error);
+        console.error("Recommendation queue error:", error);
+
         list.innerHTML =
-            '<p class="empty-state">Unable to load revisions. Check the backend.</p>';
+            '<p class="empty-state">Unable to load recommendations.</p>';
+
         count.textContent = "Unavailable";
     }
 }

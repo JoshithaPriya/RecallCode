@@ -1,8 +1,9 @@
+// Manages revision schedules independently for each user's problem progress.
 
 package com.recallcode.service;
 
-import com.recallcode.model.Problem;
-import com.recallcode.repository.ProblemRepository;
+import com.recallcode.model.UserProblemProgress;
+import com.recallcode.repository.UserProblemProgressRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,23 +12,28 @@ import java.time.LocalDate;
 @Service
 public class RevisionService {
 
-    private final ProblemRepository problemRepository;
+    private final UserProblemProgressService progressService;
+    private final UserProblemProgressRepository progressRepository;
 
-    public RevisionService(ProblemRepository problemRepository) {
-        this.problemRepository = problemRepository;
+    public RevisionService(
+            UserProblemProgressService progressService,
+            UserProblemProgressRepository progressRepository) {
+
+        this.progressService = progressService;
+        this.progressRepository = progressRepository;
     }
 
     @Transactional
-    public Problem completeRevision(Long problemId, String recallQuality) {
-        Problem problem = problemRepository.findById(problemId)
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Problem not found"));
+    public UserProblemProgress completeRevision(
+            Long userId,
+            Long problemId,
+            String recallQuality) {
 
-        int streak = problem.getRevisionStreak() == null
-                ? 0 : problem.getRevisionStreak();
+        UserProblemProgress progress =
+                progressService.getOrCreateProgress(userId, problemId);
 
-        int interval = problem.getRevisionIntervalDays() == null
-                ? 1 : problem.getRevisionIntervalDays();
+        int streak = progress.getRevisionStreak();
+        int interval = progress.getRevisionIntervalDays();
 
         switch (recallQuality) {
             case "FORGOT" -> {
@@ -48,16 +54,19 @@ public class RevisionService {
                 streak++;
                 interval = streak == 1 ? 4
                         : streak == 2 ? 10
-                        : Math.min(45, (int) Math.ceil(interval * 2.5));
+                        : Math.min(45,
+                                (int) Math.ceil(interval * 2.5));
             }
             default -> throw new IllegalArgumentException(
                     "Quality must be FORGOT, HARD, GOOD, or EASY");
         }
 
-        problem.setRevisionStreak(streak);
-        problem.setRevisionIntervalDays(interval);
-        problem.setNextRevisionDate(LocalDate.now().plusDays(interval));
+        progress.setRevisionStreak(streak);
+        progress.setRevisionIntervalDays(interval);
 
-        return problemRepository.save(problem);
+        progress.setNextRevisionAt(
+        java.time.LocalDateTime.now().plusDays(interval)
+);
+        return progressRepository.save(progress);
     }
 }

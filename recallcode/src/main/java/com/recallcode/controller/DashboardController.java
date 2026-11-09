@@ -1,33 +1,46 @@
 
 package com.recallcode.controller;
 
+import com.recallcode.model.Attempt;
+import com.recallcode.model.User;
 import com.recallcode.repository.AttemptRepository;
 import com.recallcode.repository.ProblemRepository;
+import com.recallcode.service.UserService;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
-//This API calculates your DSA progress from real database records instead of hardcoded numbers.
-
+/**
+ * Provides per-user dashboard statistics.
+ * Attempt totals and timing are scoped to the authenticated user.
+ * Problem count is global — problems are shared across users.
+ */
 @RestController
 @RequestMapping("/api/dashboard")
 public class DashboardController {
 
     private final ProblemRepository problemRepository;
     private final AttemptRepository attemptRepository;
+    private final UserService userService;
 
     public DashboardController(
             ProblemRepository problemRepository,
-            AttemptRepository attemptRepository) {
+            AttemptRepository attemptRepository,
+            UserService userService) {
+
         this.problemRepository = problemRepository;
         this.attemptRepository = attemptRepository;
+        this.userService = userService;
     }
 
     @GetMapping("/summary")
-    public Map<String, Object> getSummary() {
-        var problems = problemRepository.findAll();
-        var attempts = attemptRepository.findAll();
+    public Map<String, Object> getSummary(Authentication authentication) {
+
+        User user = userService.getUserByUsername(authentication.getName());
+        List<Attempt> attempts = attemptRepository.findByUserId(user.getId());
 
         long solvedAttempts = attempts.stream()
                 .filter(a -> "SOLVED".equals(a.getOutcome()))
@@ -35,12 +48,12 @@ public class DashboardController {
 
         double averageTime = attempts.stream()
                 .filter(a -> a.getTimeTakenMinutes() != null)
-                .mapToInt(a -> a.getTimeTakenMinutes())
+                .mapToInt(Attempt::getTimeTakenMinutes)
                 .average()
                 .orElse(0.0);
 
         Map<String, Object> summary = new LinkedHashMap<>();
-        summary.put("totalProblems", problems.size());
+        summary.put("totalProblems", problemRepository.count());
         summary.put("totalAttempts", attempts.size());
         summary.put("solvedAttempts", solvedAttempts);
         summary.put("averageTimeMinutes",

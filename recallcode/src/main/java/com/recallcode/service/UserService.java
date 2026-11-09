@@ -80,4 +80,18 @@ public class UserService {
                 .orElseThrow(() ->
                         new IllegalArgumentException("User not found."));
     }
+
+    /**
+     * Resolves the User entity for the given Spring Security principal name.
+     * Used to convert Authentication.getName() into the full User record
+     * without trusting any user-supplied ID from the request.
+     */
+    @Transactional(readOnly = true)
+    public User getUserByUsername(String username) {
+
+        return userRepository.findByUsername(username)
+                .orElseThrow(() ->
+                        new IllegalArgumentException(
+                                "Authenticated user not found: " + username));
+    }
 }

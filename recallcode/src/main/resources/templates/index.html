@@ -12,13 +12,29 @@
 </head>
 <body>
 <div class="app-shell">
-    <header class="topbar">
-        <a class="brand" th:href="@{/}">
-            <span class="brand-icon">R</span>
-            RecallCode
-        </a>
+   
+<header class="topbar">
+    <a class="brand" th:href="@{/}">
+        <span class="brand-icon">R</span>
+        RecallCode
+    </a>
+
+    <div class="d-flex align-items-center gap-3">
         <span class="text-secondary small">DSA Practice Workspace</span>
-    </header>
+
+        <!-- Securely logs out the currently authenticated user. -->
+        <form th:action="@{/logout}" method="post" class="m-0">
+            <input type="hidden"
+                   th:name="${_csrf.parameterName}"
+                   th:value="${_csrf.token}">
+
+            <button type="submit" class="btn btn-outline-danger btn-sm">
+                Logout
+            </button>
+        </form>
+    </div>
+</header>
+
 
     <main class="container-fluid dashboard-container">
         <!-- Row 1: Progress and Revision Queue -->
@@ -29,6 +45,8 @@
 
         <!-- Row 3: Library and attempt history -->
         <div th:replace="~{fragments/problem-library :: problemLibrary}"></div>
+
+        
     </main>
 </div>
 

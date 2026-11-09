@@ -33,6 +33,17 @@ public interface AttemptRepository extends JpaRepository<Attempt, Long> {
     Optional<Attempt> findByIdWithProblemAndTags(
             @Param("attemptId") Long attemptId
     );
+    @Query("""
+    SELECT DISTINCT a
+    FROM Attempt a
+    JOIN FETCH a.problem p
+    LEFT JOIN FETCH p.tags
+    JOIN FETCH a.user u
+    WHERE a.id = :attemptId
+    """)
+Optional<Attempt> findByIdWithProblemTagsAndUser(
+        @Param("attemptId") Long attemptId
+);
 
     @Query("""
         SELECT DISTINCT a

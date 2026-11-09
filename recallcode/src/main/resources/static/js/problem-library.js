@@ -379,6 +379,28 @@
         });
     });
 
+
+    // Select a problem recommended by the adaptive revision queue.
+window.addEventListener("recallcode:select-problem", event => {
+    const problem = event.detail?.problem;
+
+    if (!problem) return;
+
+    const selected = allProblems.find(
+        p => String(p.id) === String(problem.id ?? problem.problemId)
+    );
+
+    if (!selected) return;
+
+    selectedProblem = selected;
+    renderProblemList();
+    renderSelectedProblem();
+
+    $("practiceSession").scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+    });
+});
     // Refresh the library after an attempt is saved.
     window.addEventListener("recallcode:attempt-saved", () => {
         loadProblems();
