@@ -4,10 +4,6 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
-### Secrets — never commit these ###
-**/application.properties
-**/application-*.properties
-!**/application*.properties.example
 
 ### STS ###
 .apt_generated
